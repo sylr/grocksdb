@@ -15,6 +15,8 @@ import (
 // checking in db/c.cc, and in the C++ it forwards to, that it neither keeps a pointer
 // argument after returning nor calls into Go on the calling thread.
 var cgoAnnotationsAllowlist = []string{
+	// c.cc create_from copies rep into native std::string/WriteBatch, no callbacks.
+	"rocksdb_writebatch_create_from",
 	// Only append to WriteBatch::rep.
 	"rocksdb_writebatch_put",
 	"rocksdb_writebatch_put_cf",
@@ -52,6 +54,10 @@ var cgoAnnotationsAllowlist = []string{
 	"grocksdb_nocb_merge",
 	"grocksdb_nocb_merge_cf",
 	"grocksdb_nocb_write",
+	// c.cc buffer reads copy from a local PinnableSlice; no Go inputs retained.
+	// Only used on DBs opened with SetNoGoCallbacks(true).
+	"grocksdb_nocb_get_into_buffer",
+	"grocksdb_nocb_get_into_buffer_cf",
 }
 
 // These keep the pointer they are given (rocksdb_readoptions_t stores a Slice to it),

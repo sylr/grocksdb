@@ -1,3 +1,6 @@
+#ifndef GROCKSDB_H
+#define GROCKSDB_H
+
 #include <stdlib.h>
 #include "rocksdb/c.h"
 
@@ -46,3 +49,15 @@ extern void grocksdb_nocb_singledelete_cf(rocksdb_t* db, const rocksdb_writeopti
 extern void grocksdb_nocb_merge(rocksdb_t* db, const rocksdb_writeoptions_t* options, const char* key, size_t keylen, const char* val, size_t vallen, char** errptr);
 extern void grocksdb_nocb_merge_cf(rocksdb_t* db, const rocksdb_writeoptions_t* options, rocksdb_column_family_handle_t* column_family, const char* key, size_t keylen, const char* val, size_t vallen, char** errptr);
 extern void grocksdb_nocb_write(rocksdb_t* db, const rocksdb_writeoptions_t* options, rocksdb_writebatch_t* batch, char** errptr);
+
+/* The pair borrows iterator storage. Advance before fetching, never after. */
+typedef struct {
+  rocksdb_slice_t key;
+  rocksdb_slice_t value;
+  unsigned char valid;
+} grocksdb_iter_kv_t;
+extern grocksdb_iter_kv_t grocksdb_iter_kv(rocksdb_iterator_t* iter, unsigned char advance);
+extern unsigned char grocksdb_nocb_get_into_buffer(rocksdb_t* db, const rocksdb_readoptions_t* options, const char* key, size_t keylen, char* buffer, size_t buffer_size, size_t* vallen, unsigned char* found, char** errptr);
+extern unsigned char grocksdb_nocb_get_into_buffer_cf(rocksdb_t* db, const rocksdb_readoptions_t* options, rocksdb_column_family_handle_t* cf, const char* key, size_t keylen, char* buffer, size_t buffer_size, size_t* vallen, unsigned char* found, char** errptr);
+
+#endif /* GROCKSDB_H */

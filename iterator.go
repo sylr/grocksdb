@@ -1,7 +1,7 @@
 package grocksdb
 
 // #include <stdlib.h>
-// #include "rocksdb/c.h"
+// #include "grocksdb.h"
 import "C"
 
 import (
@@ -164,4 +164,26 @@ func (iter *Iterator) Refresh() (err error) {
 func (iter *Iterator) Close() {
 	C.rocksdb_iter_destroy(iter.c)
 	iter.c = nil
+}
+
+// ReadKV returns the current key and value in one cgo call. If the iterator is
+// invalid, valid is false and both slices are empty. The slices borrow iterator
+// storage and must not be modified; they expire on any iterator movement,
+// Refresh or Close. Call Err after iteration to distinguish exhaustion from errors.
+func (iter *Iterator) ReadKV() (key, value OptimizedSlice, valid bool) {
+	return iter.readKV(false)
+}
+
+// NextKV advances a valid iterator and returns its new key and value in one cgo
+// call, with the same borrowing rules as ReadKV. On an invalid iterator it returns
+// valid=false without moving. Seek first, then use ReadKV for the first pair.
+func (iter *Iterator) NextKV() (key, value OptimizedSlice, valid bool) {
+	return iter.readKV(true)
+}
+
+func (iter *Iterator) readKV(advance bool) (key, value OptimizedSlice, valid bool) {
+	// Not annotated: Next can run Go comparators and merge operators, and no Go
+	// pointer is passed, so noescape would gain nothing anyway.
+	result := C.grocksdb_iter_kv(iter.c, boolToChar(advance))
+	return newNativeOptimizeSlice(result.key), newNativeOptimizeSlice(result.value), result.valid != 0
 }

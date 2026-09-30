@@ -116,3 +116,22 @@ void grocksdb_nocb_merge_cf(rocksdb_t* db, const rocksdb_writeoptions_t* options
 void grocksdb_nocb_write(rocksdb_t* db, const rocksdb_writeoptions_t* options, rocksdb_writebatch_t* batch, char** errptr) {
   rocksdb_write(db, options, batch, errptr);
 }
+
+grocksdb_iter_kv_t grocksdb_iter_kv(rocksdb_iterator_t* iter, unsigned char advance) {
+  grocksdb_iter_kv_t result = {0};
+  if (!rocksdb_iter_valid(iter)) return result;
+  if (advance) rocksdb_iter_next(iter);
+  if (!rocksdb_iter_valid(iter)) return result;
+  result.key.data = rocksdb_iter_key(iter, &result.key.size);
+  result.value.data = rocksdb_iter_value(iter, &result.value.size);
+  result.valid = 1;
+  return result;
+}
+
+unsigned char grocksdb_nocb_get_into_buffer(rocksdb_t* db, const rocksdb_readoptions_t* options, const char* key, size_t keylen, char* buffer, size_t buffer_size, size_t* vallen, unsigned char* found, char** errptr) {
+  return rocksdb_get_into_buffer(db, options, key, keylen, buffer, buffer_size, vallen, found, errptr);
+}
+
+unsigned char grocksdb_nocb_get_into_buffer_cf(rocksdb_t* db, const rocksdb_readoptions_t* options, rocksdb_column_family_handle_t* cf, const char* key, size_t keylen, char* buffer, size_t buffer_size, size_t* vallen, unsigned char* found, char** errptr) {
+  return rocksdb_get_into_buffer_cf(db, options, cf, key, keylen, buffer, buffer_size, vallen, found, errptr);
+}

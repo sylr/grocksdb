@@ -50,24 +50,48 @@ func (s pinnableSliceSlice) destroy() {
 	}
 }
 
-// bytesSliceToCSlices converts a slice of byte slices to two slices with C
-// datatypes. One containing pointers to copies of the byte slices and one
-// containing their sizes.
-// IMPORTANT: All the contents of the charsSlice array are malloced and
-// should be freed using the Destroy method of charsSlice.
-func byteSlicesToCSlices(vals [][]byte) (charsSlice, sizeTSlice) {
+// byteSlicesToCSlices copies a slice of byte slices into a single C allocation
+// and returns pointers into it, plus their sizes. One malloc replaces one per
+// key, which matters for MultiGet with many keys.
+// IMPORTANT: the copies must be freed with the Destroy method of cKeyArray.
+func byteSlicesToCSlices(vals [][]byte) (cKeyArray, sizeTSlice) {
 	if len(vals) == 0 {
-		return nil, nil
+		return cKeyArray{}, nil
 	}
+
+	// Reserve one byte so every pointer is valid C storage even if all keys are empty.
+	total := 1
+	for _, val := range vals {
+		total += len(val)
+	}
+	base := C.malloc(C.size_t(total))
 
 	chars := make(charsSlice, len(vals))
 	sizes := make(sizeTSlice, len(vals))
+	offset := 0
 	for i, val := range vals {
-		chars[i] = (*C.char)(C.CBytes(val))
+		p := unsafe.Add(base, offset)
+		copy(unsafe.Slice((*byte)(p), len(val)), val)
+		chars[i] = (*C.char)(p)
 		sizes[i] = C.size_t(len(val))
+		offset += len(val)
 	}
 
-	return chars, sizes
+	return cKeyArray{chars: chars, base: base}, sizes
+}
+
+// cKeyArray holds pointers into one C allocation made by byteSlicesToCSlices.
+type cKeyArray struct {
+	chars charsSlice
+	base  unsafe.Pointer
+}
+
+func (a cKeyArray) c() **C.char { return a.chars.c() }
+
+func (a cKeyArray) Destroy() {
+	if a.base != nil {
+		C.free(a.base)
+	}
 }
 
 func (s charsSlice) Destroy() {

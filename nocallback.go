@@ -12,8 +12,9 @@ var ErrGoCallbacksNotAllowed = errors.New("grocksdb: Go callbacks are not allowe
 // any of its column families.
 //
 // In exchange, Get, GetCF, GetPinned, GetPinnedCF, Put, PutCF, Delete, DeleteCF,
-// SingleDelete, SingleDeleteCF, Merge, MergeCF and Write skip the heap allocations
-// cgo otherwise makes for their output arguments.
+// SingleDelete, SingleDeleteCF, Merge, MergeCF, Write, GetIntoBuffer and
+// GetIntoBufferCF skip the heap allocations cgo otherwise makes for their
+// output arguments.
 //
 // The mode is read once, when the DB is opened. Opening fails with
 // ErrGoCallbacksNotAllowed if Go callbacks were installed through this package's

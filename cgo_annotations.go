@@ -17,6 +17,9 @@ package grocksdb
 
 // /* Always safe: these only append to the batch's own buffer, or read state the
 //    iterator/pinnable slice has already cached. They never reach user code. */
+// /* c.cc create_from copies rep into std::string/WriteBatch; no callbacks. */
+// #cgo noescape rocksdb_writebatch_create_from
+// #cgo nocallback rocksdb_writebatch_create_from
 // #cgo noescape rocksdb_writebatch_put
 // #cgo nocallback rocksdb_writebatch_put
 // #cgo noescape rocksdb_writebatch_put_cf
@@ -89,6 +92,14 @@ package grocksdb
 // #cgo nocallback grocksdb_nocb_merge_cf
 // #cgo noescape grocksdb_nocb_write
 // #cgo nocallback grocksdb_nocb_write
+//
+// /* c.cc buffer reads use a local PinnableSlice and copy synchronously. Neither
+//    retains Go arguments; these forwarders are called only when no Go callbacks
+//    can run. */
+// #cgo noescape grocksdb_nocb_get_into_buffer
+// #cgo nocallback grocksdb_nocb_get_into_buffer
+// #cgo noescape grocksdb_nocb_get_into_buffer_cf
+// #cgo nocallback grocksdb_nocb_get_into_buffer_cf
 //
 // #include "grocksdb.h"
 import "C"
