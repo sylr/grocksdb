@@ -62,3 +62,57 @@ rocksdb_slicetransform_t* gorocksdb_slicetransform_create(uintptr_t idx) {
     	(unsigned char (*)(void*, const char*, size_t))(gorocksdb_slicetransform_in_domain),
     	(const char* (*)(void*))(gorocksdb_slicetransform_name));
 }
+
+/* noescape/nocallback forwarders, see grocksdb.h */
+
+char* grocksdb_nocb_get(rocksdb_t* db, const rocksdb_readoptions_t* options, const char* key, size_t keylen, size_t* vallen, char** errptr) {
+  return rocksdb_get(db, options, key, keylen, vallen, errptr);
+}
+
+char* grocksdb_nocb_get_cf(rocksdb_t* db, const rocksdb_readoptions_t* options, rocksdb_column_family_handle_t* column_family, const char* key, size_t keylen, size_t* vallen, char** errptr) {
+  return rocksdb_get_cf(db, options, column_family, key, keylen, vallen, errptr);
+}
+
+rocksdb_pinnableslice_t* grocksdb_nocb_get_pinned(rocksdb_t* db, const rocksdb_readoptions_t* options, const char* key, size_t keylen, char** errptr) {
+  return rocksdb_get_pinned(db, options, key, keylen, errptr);
+}
+
+rocksdb_pinnableslice_t* grocksdb_nocb_get_pinned_cf(rocksdb_t* db, const rocksdb_readoptions_t* options, rocksdb_column_family_handle_t* column_family, const char* key, size_t keylen, char** errptr) {
+  return rocksdb_get_pinned_cf(db, options, column_family, key, keylen, errptr);
+}
+
+void grocksdb_nocb_put(rocksdb_t* db, const rocksdb_writeoptions_t* options, const char* key, size_t keylen, const char* val, size_t vallen, char** errptr) {
+  rocksdb_put(db, options, key, keylen, val, vallen, errptr);
+}
+
+void grocksdb_nocb_put_cf(rocksdb_t* db, const rocksdb_writeoptions_t* options, rocksdb_column_family_handle_t* column_family, const char* key, size_t keylen, const char* val, size_t vallen, char** errptr) {
+  rocksdb_put_cf(db, options, column_family, key, keylen, val, vallen, errptr);
+}
+
+void grocksdb_nocb_delete(rocksdb_t* db, const rocksdb_writeoptions_t* options, const char* key, size_t keylen, char** errptr) {
+  rocksdb_delete(db, options, key, keylen, errptr);
+}
+
+void grocksdb_nocb_delete_cf(rocksdb_t* db, const rocksdb_writeoptions_t* options, rocksdb_column_family_handle_t* column_family, const char* key, size_t keylen, char** errptr) {
+  rocksdb_delete_cf(db, options, column_family, key, keylen, errptr);
+}
+
+void grocksdb_nocb_singledelete(rocksdb_t* db, const rocksdb_writeoptions_t* options, const char* key, size_t keylen, char** errptr) {
+  rocksdb_singledelete(db, options, key, keylen, errptr);
+}
+
+void grocksdb_nocb_singledelete_cf(rocksdb_t* db, const rocksdb_writeoptions_t* options, rocksdb_column_family_handle_t* column_family, const char* key, size_t keylen, char** errptr) {
+  rocksdb_singledelete_cf(db, options, column_family, key, keylen, errptr);
+}
+
+void grocksdb_nocb_merge(rocksdb_t* db, const rocksdb_writeoptions_t* options, const char* key, size_t keylen, const char* val, size_t vallen, char** errptr) {
+  rocksdb_merge(db, options, key, keylen, val, vallen, errptr);
+}
+
+void grocksdb_nocb_merge_cf(rocksdb_t* db, const rocksdb_writeoptions_t* options, rocksdb_column_family_handle_t* column_family, const char* key, size_t keylen, const char* val, size_t vallen, char** errptr) {
+  rocksdb_merge_cf(db, options, column_family, key, keylen, val, vallen, errptr);
+}
+
+void grocksdb_nocb_write(rocksdb_t* db, const rocksdb_writeoptions_t* options, rocksdb_writebatch_t* batch, char** errptr) {
+  rocksdb_write(db, options, batch, errptr);
+}

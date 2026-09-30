@@ -61,6 +61,13 @@ CGO_LDFLAGS="-L/path/to/rocksdb -lzstd" go build -tags grocksdb_clean_link
 CGO_LDFLAGS="-L/path/to/rocksdb -lrocksdb -lstdc++ -lzstd -llz4" go build -tags grocksdb_clean_link
 ```
 
+#### cgo `noescape`/`nocallback` annotations
+Since Go 1.24, grocksdb marks hot C calls with `#cgo noescape` and `#cgo nocallback`, so their arguments can stay on the stack instead of the heap.
+
+- Always on: `WriteBatch` mutations, iterator `Key`/`Value`/`Timestamp`/`Err`, and pinnable slice data.
+- Opt-in: `Get`, `GetCF`, `GetPinned`, `GetPinnedCF`, `Put`, `PutCF`, `Delete`, `DeleteCF`, `SingleDelete`, `SingleDeleteCF`, `Merge`, `MergeCF` and `Write`. Enable with `opts.SetNoGoCallbacks(true)` when the DB uses no Go comparator, merge operator, prefix extractor or compaction filter. Opening the DB fails with `ErrGoCallbacksNotAllowed` otherwise.
+- Build with `-tags grocksdb_no_cgo_annotations` to turn the annotations off.
+
 ## Usage
 
 See also: [doc](https://godoc.org/github.com/linxGnu/grocksdb)

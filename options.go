@@ -111,6 +111,12 @@ type Options struct {
 	cmo  *C.rocksdb_mergeoperator_t
 	cst  *C.rocksdb_slicetransform_t
 	ccf  *C.rocksdb_compactionfilter_t
+
+	// goCallbacks records that a Go-implemented comparator, merge operator, prefix
+	// extractor or compaction filter was installed. It never resets.
+	goCallbacks bool
+	// noGoCallbacks is the caller's opt-in, see SetNoGoCallbacks.
+	noGoCallbacks bool
 }
 
 // NewDefaultOptions creates the default Options.
@@ -137,6 +143,9 @@ func GetOptionsFromString(base *Options, optStr string) (newOpt *Options, err er
 	)
 
 	newOpt = NewDefaultOptions()
+	// RocksDB copies base into newOpt, callbacks included.
+	newOpt.goCallbacks = base.goCallbacks
+	newOpt.noGoCallbacks = base.noGoCallbacks
 	C.rocksdb_get_options_from_string(base.c, cOptStr, newOpt.c, &cErr)
 	if err = fromCError(cErr); err != nil {
 		newOpt.Destroy()
@@ -170,6 +179,7 @@ func (opts *Options) SetCompactionFilter(value CompactionFilter) {
 	if nc, ok := value.(*nativeCompactionFilter); ok {
 		opts.ccf = nc.c
 	} else {
+		opts.goCallbacks = true
 		idx := registerCompactionFilter(value)
 		opts.ccf = C.gorocksdb_compactionfilter_create(C.uintptr_t(idx))
 	}
@@ -185,6 +195,7 @@ func (opts *Options) SetCompactionFilter(value CompactionFilter) {
 func (opts *Options) SetComparator(cmp *Comparator) {
 	cmp_ := unsafe.Pointer(cmp.c)
 	opts.SetNativeComparator(cmp_)
+	opts.goCallbacks = true
 	cmp.c = nil
 }
 
@@ -207,6 +218,7 @@ func (opts *Options) SetMergeOperator(value MergeOperator) {
 	if nmo, ok := value.(*nativeMergeOperator); ok {
 		opts.cmo = nmo.c
 	} else {
+		opts.goCallbacks = true
 		idx := registerMergeOperator(value)
 		opts.cmo = C.gorocksdb_mergeoperator_create(C.uintptr_t(idx))
 	}
@@ -818,6 +830,7 @@ func (opts *Options) SetPrefixExtractor(value SliceTransform) {
 	if nst, ok := value.(*nativeSliceTransform); ok {
 		opts.cst = nst.c
 	} else {
+		opts.goCallbacks = true
 		idx := registerSliceTransform(value)
 		opts.cst = C.gorocksdb_slicetransform_create(C.uintptr_t(idx))
 	}

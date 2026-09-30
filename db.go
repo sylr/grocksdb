@@ -2,6 +2,7 @@ package grocksdb
 
 // #include <stdlib.h>
 // #include "rocksdb/c.h"
+// #include "grocksdb.h"
 import "C"
 
 import (
@@ -24,10 +25,18 @@ type DB struct {
 	c    *C.rocksdb_t
 	name string
 	opts *Options
+
+	// noGoCallbacks is fixed at open (see Options.SetNoGoCallbacks). When set, hot
+	// paths call C shims annotated with #cgo noescape/nocallback.
+	noGoCallbacks bool
 }
 
 // OpenDb opens a database with the specified options.
 func OpenDb(opts *Options, name string) (db *DB, err error) {
+	if err = checkNoGoCallbacks(opts, nil); err != nil {
+		return db, err
+	}
+
 	var (
 		cErr  *C.char
 		cName = C.CString(name)
@@ -39,6 +48,8 @@ func OpenDb(opts *Options, name string) (db *DB, err error) {
 			name: name,
 			c:    _db,
 			opts: opts,
+
+			noGoCallbacks: opts.noGoCallbacks,
 		}
 	}
 
@@ -48,6 +59,10 @@ func OpenDb(opts *Options, name string) (db *DB, err error) {
 
 // OpenDbWithTTL opens a database with TTL support with the specified options.
 func OpenDbWithTTL(opts *Options, name string, ttl int) (db *DB, err error) {
+	if err = checkNoGoCallbacks(opts, nil); err != nil {
+		return db, err
+	}
+
 	var (
 		cErr  *C.char
 		cName = C.CString(name)
@@ -59,6 +74,8 @@ func OpenDbWithTTL(opts *Options, name string, ttl int) (db *DB, err error) {
 			name: name,
 			c:    _db,
 			opts: opts,
+
+			noGoCallbacks: opts.noGoCallbacks,
 		}
 	}
 
@@ -68,6 +85,10 @@ func OpenDbWithTTL(opts *Options, name string, ttl int) (db *DB, err error) {
 
 // OpenDbForReadOnly opens a database with the specified options for readonly usage.
 func OpenDbForReadOnly(opts *Options, name string, errorIfWalFileExists bool) (db *DB, err error) {
+	if err = checkNoGoCallbacks(opts, nil); err != nil {
+		return db, err
+	}
+
 	var (
 		cErr  *C.char
 		cName = C.CString(name)
@@ -79,6 +100,8 @@ func OpenDbForReadOnly(opts *Options, name string, errorIfWalFileExists bool) (d
 			name: name,
 			c:    _db,
 			opts: opts,
+
+			noGoCallbacks: opts.noGoCallbacks,
 		}
 	}
 
@@ -98,6 +121,10 @@ func OpenDbForReadOnly(opts *Options, name string, errorIfWalFileExists bool) (d
 // do not destroy the corresponding column family handle.
 // WAL tailing is not supported at present, but will arrive soon.
 func OpenDbAsSecondary(opts *Options, name, secondaryPath string) (db *DB, err error) {
+	if err = checkNoGoCallbacks(opts, nil); err != nil {
+		return db, err
+	}
+
 	var (
 		cErr  *C.char
 		cName = C.CString(name)
@@ -110,6 +137,8 @@ func OpenDbAsSecondary(opts *Options, name, secondaryPath string) (db *DB, err e
 			name: name,
 			c:    _db,
 			opts: opts,
+
+			noGoCallbacks: opts.noGoCallbacks,
 		}
 	}
 
@@ -125,6 +154,10 @@ func OpenDbColumnFamilies(
 	cfNames []string,
 	cfOpts []*Options,
 ) (db *DB, cfHandles []*ColumnFamilyHandle, err error) {
+	if err = checkNoGoCallbacks(opts, cfOpts); err != nil {
+		return db, cfHandles, err
+	}
+
 	numColumnFamilies := len(cfNames)
 	if numColumnFamilies != len(cfOpts) {
 		err = ErrColumnFamilyMustMatch
@@ -159,6 +192,8 @@ func OpenDbColumnFamilies(
 			name: name,
 			c:    _db,
 			opts: opts,
+
+			noGoCallbacks: opts.noGoCallbacks,
 		}
 		cfHandles = make([]*ColumnFamilyHandle, numColumnFamilies)
 		for i, c := range cHandles {
@@ -196,6 +231,10 @@ func OpenDbColumnFamiliesWithTTL(
 	cfOpts []*Options,
 	ttls []int,
 ) (db *DB, cfHandles []*ColumnFamilyHandle, err error) {
+	if err = checkNoGoCallbacks(opts, cfOpts); err != nil {
+		return db, cfHandles, err
+	}
+
 	numColumnFamilies := len(cfNames)
 	if numColumnFamilies != len(cfOpts) {
 		err = ErrColumnFamilyMustMatch
@@ -236,6 +275,8 @@ func OpenDbColumnFamiliesWithTTL(
 			name: name,
 			c:    _db,
 			opts: opts,
+
+			noGoCallbacks: opts.noGoCallbacks,
 		}
 		cfHandles = make([]*ColumnFamilyHandle, numColumnFamilies)
 		for i, c := range cHandles {
@@ -259,6 +300,10 @@ func OpenDbForReadOnlyColumnFamilies(
 	cfOpts []*Options,
 	errorIfWalFileExists bool,
 ) (db *DB, cfHandles []*ColumnFamilyHandle, err error) {
+	if err = checkNoGoCallbacks(opts, cfOpts); err != nil {
+		return db, cfHandles, err
+	}
+
 	numColumnFamilies := len(cfNames)
 	if numColumnFamilies != len(cfOpts) {
 		err = ErrColumnFamilyMustMatch
@@ -294,6 +339,8 @@ func OpenDbForReadOnlyColumnFamilies(
 			name: name,
 			c:    _db,
 			opts: opts,
+
+			noGoCallbacks: opts.noGoCallbacks,
 		}
 		cfHandles = make([]*ColumnFamilyHandle, numColumnFamilies)
 		for i, c := range cHandles {
@@ -325,6 +372,10 @@ func OpenDbAsSecondaryColumnFamilies(
 	cfNames []string,
 	cfOpts []*Options,
 ) (db *DB, cfHandles []*ColumnFamilyHandle, err error) {
+	if err = checkNoGoCallbacks(opts, cfOpts); err != nil {
+		return db, cfHandles, err
+	}
+
 	numColumnFamilies := len(cfNames)
 	if numColumnFamilies != len(cfOpts) {
 		err = ErrColumnFamilyMustMatch
@@ -362,6 +413,8 @@ func OpenDbAsSecondaryColumnFamilies(
 			name: name,
 			c:    _db,
 			opts: opts,
+
+			noGoCallbacks: opts.noGoCallbacks,
 		}
 		cfHandles = make([]*ColumnFamilyHandle, numColumnFamilies)
 		for i, c := range cHandles {
@@ -389,6 +442,10 @@ func OpenDbAndTrimHistory(opts *Options,
 	cfOpts []*Options,
 	trimTimestamp []byte,
 ) (db *DB, cfHandles []*ColumnFamilyHandle, err error) {
+	if err = checkNoGoCallbacks(opts, cfOpts); err != nil {
+		return db, cfHandles, err
+	}
+
 	numColumnFamilies := len(cfNames)
 	if numColumnFamilies != len(cfOpts) {
 		err = ErrColumnFamilyMustMatch
@@ -427,6 +484,8 @@ func OpenDbAndTrimHistory(opts *Options,
 			name: name,
 			c:    _db,
 			opts: opts,
+
+			noGoCallbacks: opts.noGoCallbacks,
 		}
 		cfHandles = make([]*ColumnFamilyHandle, numColumnFamilies)
 		for i, c := range cHandles {
@@ -528,6 +587,26 @@ func (db *DB) KeyMayExistsCF(opts *ReadOptions, cf *ColumnFamilyHandle, key []by
 
 // Get returns the data associated with the key from the database.
 func (db *DB) Get(opts *ReadOptions, key []byte) (slice *Slice, err error) {
+	if !db.noGoCallbacks {
+		return db.getSlow(opts, key)
+	}
+
+	var (
+		cErr    *C.char
+		cValLen C.size_t
+		cKey    = refGoBytes(key)
+	)
+
+	cValue := C.grocksdb_nocb_get(db.c, opts.c, cKey, C.size_t(len(key)), &cValLen, &cErr)
+	if err = fromCError(cErr); err == nil {
+		slice = NewSlice(cValue, cValLen)
+	}
+
+	return slice, err
+}
+
+// getSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) getSlow(opts *ReadOptions, key []byte) (slice *Slice, err error) {
 	var (
 		cErr    *C.char
 		cValLen C.size_t
@@ -609,6 +688,26 @@ func (db *DB) GetBytesWithTS(opts *ReadOptions, key []byte) (data, timestamp []b
 
 // GetCF returns the data associated with the key from the database and column family.
 func (db *DB) GetCF(opts *ReadOptions, cf *ColumnFamilyHandle, key []byte) (slice *Slice, err error) {
+	if !db.noGoCallbacks {
+		return db.getCFSlow(opts, cf, key)
+	}
+
+	var (
+		cErr    *C.char
+		cValLen C.size_t
+		cKey    = refGoBytes(key)
+	)
+
+	cValue := C.grocksdb_nocb_get_cf(db.c, opts.c, cf.c, cKey, C.size_t(len(key)), &cValLen, &cErr)
+	if err = fromCError(cErr); err == nil {
+		slice = NewSlice(cValue, cValLen)
+	}
+
+	return slice, err
+}
+
+// getCFSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) getCFSlow(opts *ReadOptions, cf *ColumnFamilyHandle, key []byte) (slice *Slice, err error) {
 	var (
 		cErr    *C.char
 		cValLen C.size_t
@@ -644,6 +743,25 @@ func (db *DB) GetCFWithTS(opts *ReadOptions, cf *ColumnFamilyHandle, key []byte)
 
 // GetPinned returns the data associated with the key from the database.
 func (db *DB) GetPinned(opts *ReadOptions, key []byte) (handle *PinnableSlice, err error) {
+	if !db.noGoCallbacks {
+		return db.getPinnedSlow(opts, key)
+	}
+
+	var (
+		cErr *C.char
+		cKey = refGoBytes(key)
+	)
+
+	cHandle := C.grocksdb_nocb_get_pinned(db.c, opts.c, cKey, C.size_t(len(key)), &cErr)
+	if err = fromCError(cErr); err == nil {
+		handle = newNativePinnableSlice(cHandle)
+	}
+
+	return handle, err
+}
+
+// getPinnedSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) getPinnedSlow(opts *ReadOptions, key []byte) (handle *PinnableSlice, err error) {
 	var (
 		cErr *C.char
 		cKey = refGoBytes(key)
@@ -685,6 +803,25 @@ func (db *DB) GetPinnedV2(opts *ReadOptions, key []byte) (handle *PinnableSliceH
 
 // GetPinnedCF returns the data associated with the key from the database, specific column family.
 func (db *DB) GetPinnedCF(opts *ReadOptions, cf *ColumnFamilyHandle, key []byte) (handle *PinnableSlice, err error) {
+	if !db.noGoCallbacks {
+		return db.getPinnedCFSlow(opts, cf, key)
+	}
+
+	var (
+		cErr *C.char
+		cKey = refGoBytes(key)
+	)
+
+	cHandle := C.grocksdb_nocb_get_pinned_cf(db.c, opts.c, cf.c, cKey, C.size_t(len(key)), &cErr)
+	if err = fromCError(cErr); err == nil {
+		handle = newNativePinnableSlice(cHandle)
+	}
+
+	return handle, err
+}
+
+// getPinnedCFSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) getPinnedCFSlow(opts *ReadOptions, cf *ColumnFamilyHandle, key []byte) (handle *PinnableSlice, err error) {
 	var (
 		cErr *C.char
 		cKey = refGoBytes(key)
@@ -1026,6 +1163,24 @@ func (db *DB) MultiGetMultiCFWithTS(opts *ReadOptions, cfs ColumnFamilyHandles, 
 
 // Put writes data associated with a key to the database.
 func (db *DB) Put(opts *WriteOptions, key, value []byte) (err error) {
+	if !db.noGoCallbacks {
+		return db.putSlow(opts, key, value)
+	}
+
+	var (
+		cErr   *C.char
+		cKey   = refGoBytes(key)
+		cValue = refGoBytes(value)
+	)
+
+	C.grocksdb_nocb_put(db.c, opts.c, cKey, C.size_t(len(key)), cValue, C.size_t(len(value)), &cErr)
+	err = fromCError(cErr)
+
+	return err
+}
+
+// putSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) putSlow(opts *WriteOptions, key, value []byte) (err error) {
 	var (
 		cErr   *C.char
 		cKey   = refGoBytes(key)
@@ -1055,6 +1210,24 @@ func (db *DB) PutWithTS(opts *WriteOptions, key, ts, value []byte) (err error) {
 
 // PutCF writes data associated with a key to the database and column family.
 func (db *DB) PutCF(opts *WriteOptions, cf *ColumnFamilyHandle, key, value []byte) (err error) {
+	if !db.noGoCallbacks {
+		return db.putCFSlow(opts, cf, key, value)
+	}
+
+	var (
+		cErr   *C.char
+		cKey   = refGoBytes(key)
+		cValue = refGoBytes(value)
+	)
+
+	C.grocksdb_nocb_put_cf(db.c, opts.c, cf.c, cKey, C.size_t(len(key)), cValue, C.size_t(len(value)), &cErr)
+	err = fromCError(cErr)
+
+	return err
+}
+
+// putCFSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) putCFSlow(opts *WriteOptions, cf *ColumnFamilyHandle, key, value []byte) (err error) {
 	var (
 		cErr   *C.char
 		cKey   = refGoBytes(key)
@@ -1084,6 +1257,23 @@ func (db *DB) PutCFWithTS(opts *WriteOptions, cf *ColumnFamilyHandle, key, ts, v
 
 // Delete removes the data associated with the key from the database.
 func (db *DB) Delete(opts *WriteOptions, key []byte) (err error) {
+	if !db.noGoCallbacks {
+		return db.deleteSlow(opts, key)
+	}
+
+	var (
+		cErr *C.char
+		cKey = refGoBytes(key)
+	)
+
+	C.grocksdb_nocb_delete(db.c, opts.c, cKey, C.size_t(len(key)), &cErr)
+	err = fromCError(cErr)
+
+	return err
+}
+
+// deleteSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) deleteSlow(opts *WriteOptions, key []byte) (err error) {
 	var (
 		cErr *C.char
 		cKey = refGoBytes(key)
@@ -1097,6 +1287,23 @@ func (db *DB) Delete(opts *WriteOptions, key []byte) (err error) {
 
 // DeleteCF removes the data associated with the key from the database and column family.
 func (db *DB) DeleteCF(opts *WriteOptions, cf *ColumnFamilyHandle, key []byte) (err error) {
+	if !db.noGoCallbacks {
+		return db.deleteCFSlow(opts, cf, key)
+	}
+
+	var (
+		cErr *C.char
+		cKey = refGoBytes(key)
+	)
+
+	C.grocksdb_nocb_delete_cf(db.c, opts.c, cf.c, cKey, C.size_t(len(key)), &cErr)
+	err = fromCError(cErr)
+
+	return err
+}
+
+// deleteCFSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) deleteCFSlow(opts *WriteOptions, cf *ColumnFamilyHandle, key []byte) (err error) {
 	var (
 		cErr *C.char
 		cKey = refGoBytes(key)
@@ -1195,6 +1402,23 @@ func (db *DB) DeleteRangeCF(opts *WriteOptions, cf *ColumnFamilyHandle, startKey
 //
 // Note: consider setting options.sync = true.
 func (db *DB) SingleDelete(opts *WriteOptions, key []byte) (err error) {
+	if !db.noGoCallbacks {
+		return db.singleDeleteSlow(opts, key)
+	}
+
+	var (
+		cErr *C.char
+		cKey = refGoBytes(key)
+	)
+
+	C.grocksdb_nocb_singledelete(db.c, opts.c, cKey, C.size_t(len(key)), &cErr)
+	err = fromCError(cErr)
+
+	return err
+}
+
+// singleDeleteSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) singleDeleteSlow(opts *WriteOptions, key []byte) (err error) {
 	var (
 		cErr *C.char
 		cKey = refGoBytes(key)
@@ -1223,6 +1447,23 @@ func (db *DB) SingleDelete(opts *WriteOptions, key []byte) (err error) {
 //
 // Note: consider setting options.sync = true.
 func (db *DB) SingleDeleteCF(opts *WriteOptions, cf *ColumnFamilyHandle, key []byte) (err error) {
+	if !db.noGoCallbacks {
+		return db.singleDeleteCFSlow(opts, cf, key)
+	}
+
+	var (
+		cErr *C.char
+		cKey = refGoBytes(key)
+	)
+
+	C.grocksdb_nocb_singledelete_cf(db.c, opts.c, cf.c, cKey, C.size_t(len(key)), &cErr)
+	err = fromCError(cErr)
+
+	return err
+}
+
+// singleDeleteCFSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) singleDeleteCFSlow(opts *WriteOptions, cf *ColumnFamilyHandle, key []byte) (err error) {
 	var (
 		cErr *C.char
 		cKey = refGoBytes(key)
@@ -1236,6 +1477,24 @@ func (db *DB) SingleDeleteCF(opts *WriteOptions, cf *ColumnFamilyHandle, key []b
 
 // Merge merges the data associated with the key with the actual data in the database.
 func (db *DB) Merge(opts *WriteOptions, key, value []byte) (err error) {
+	if !db.noGoCallbacks {
+		return db.mergeSlow(opts, key, value)
+	}
+
+	var (
+		cErr   *C.char
+		cKey   = refGoBytes(key)
+		cValue = refGoBytes(value)
+	)
+
+	C.grocksdb_nocb_merge(db.c, opts.c, cKey, C.size_t(len(key)), cValue, C.size_t(len(value)), &cErr)
+	err = fromCError(cErr)
+
+	return err
+}
+
+// mergeSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) mergeSlow(opts *WriteOptions, key, value []byte) (err error) {
 	var (
 		cErr   *C.char
 		cKey   = refGoBytes(key)
@@ -1251,6 +1510,24 @@ func (db *DB) Merge(opts *WriteOptions, key, value []byte) (err error) {
 // MergeCF merges the data associated with the key with the actual data in the
 // database and column family.
 func (db *DB) MergeCF(opts *WriteOptions, cf *ColumnFamilyHandle, key, value []byte) (err error) {
+	if !db.noGoCallbacks {
+		return db.mergeCFSlow(opts, cf, key, value)
+	}
+
+	var (
+		cErr   *C.char
+		cKey   = refGoBytes(key)
+		cValue = refGoBytes(value)
+	)
+
+	C.grocksdb_nocb_merge_cf(db.c, opts.c, cf.c, cKey, C.size_t(len(key)), cValue, C.size_t(len(value)), &cErr)
+	err = fromCError(cErr)
+
+	return err
+}
+
+// mergeCFSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) mergeCFSlow(opts *WriteOptions, cf *ColumnFamilyHandle, key, value []byte) (err error) {
 	var (
 		cErr   *C.char
 		cKey   = refGoBytes(key)
@@ -1265,6 +1542,20 @@ func (db *DB) MergeCF(opts *WriteOptions, cf *ColumnFamilyHandle, key, value []b
 
 // Write a batch to the database.
 func (db *DB) Write(opts *WriteOptions, batch *WriteBatch) (err error) {
+	if !db.noGoCallbacks {
+		return db.writeSlow(opts, batch)
+	}
+
+	var cErr *C.char
+
+	C.grocksdb_nocb_write(db.c, opts.c, batch.c, &cErr)
+	err = fromCError(cErr)
+
+	return err
+}
+
+// writeSlow is the path used when Go callbacks may run: see Options.SetNoGoCallbacks.
+func (db *DB) writeSlow(opts *WriteOptions, batch *WriteBatch) (err error) {
 	var cErr *C.char
 
 	C.rocksdb_write(db.c, opts.c, batch.c, &cErr)
@@ -1403,6 +1694,10 @@ func (db *DB) GetPropertyCF(propName string, cf *ColumnFamilyHandle) (value stri
 
 // CreateColumnFamily create a new column family.
 func (db *DB) CreateColumnFamily(opts *Options, name string) (handle *ColumnFamilyHandle, err error) {
+	if db.noGoCallbacks && opts.goCallbacks {
+		return nil, ErrGoCallbacksNotAllowed
+	}
+
 	var (
 		cErr  *C.char
 		cName = C.CString(name)
@@ -1423,6 +1718,10 @@ func (db *DB) CreateColumnFamilyWithImport(
 	importOpts *ImportColumnFamilyOption,
 	metadata *ExportImportFileMetadata,
 ) (handle *ColumnFamilyHandle, err error) {
+	if db.noGoCallbacks && opts.goCallbacks {
+		return nil, ErrGoCallbacksNotAllowed
+	}
+
 	var (
 		cErr  *C.char
 		cName = C.CString(name)
@@ -1444,6 +1743,10 @@ func (db *DB) GetDefaultColumnFamily() *ColumnFamilyHandle {
 
 // CreateColumnFamilies creates new column families.
 func (db *DB) CreateColumnFamilies(opts *Options, names []string) (handles []*ColumnFamilyHandle, err error) {
+	if db.noGoCallbacks && opts.goCallbacks {
+		return nil, ErrGoCallbacksNotAllowed
+	}
+
 	if len(names) == 0 {
 		return nil, nil
 	}
@@ -1492,6 +1795,10 @@ func (db *DB) CreateColumnFamilies(opts *Options, names []string) (handles []*Co
 // CONSTRAINTS:
 // Not specifying/passing or non-positive TTL behaves like TTL = infinity
 func (db *DB) CreateColumnFamilyWithTTL(opts *Options, name string, ttl int) (handle *ColumnFamilyHandle, err error) {
+	if db.noGoCallbacks && opts.goCallbacks {
+		return nil, ErrGoCallbacksNotAllowed
+	}
+
 	var (
 		cErr  *C.char
 		cName = C.CString(name)
